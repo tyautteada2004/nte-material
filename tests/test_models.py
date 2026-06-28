@@ -171,6 +171,26 @@ def test_rarity_conversion_cascade():
     assert by[p] == (15, 0, 14, 1)    # 紫: 不足14, 流入(1)
 
 
+def test_material_breakdown_lists_characters_and_quantities():
+    proj = Project()
+    a = _chaos()                 # ikusei=ファントム, hunt=海の涙
+    a.include_skill = False
+    a.include_arc = False
+    a.ascension_level = 70       # 海の涙 36 のみ残り
+    b = _chaos()
+    b.name = "別キャラ"
+    b.include_skill = False
+    b.include_arc = False
+    b.ascension_level = 60       # 海の涙 24+36=60 残り
+    proj.characters = [a, b]
+
+    bd = proj.material_breakdown("海の涙")
+    assert bd == [("別キャラ", 60), ("カオス", 36)]  # 必要数の多い順
+
+    # 誰も必要としない素材は空
+    assert proj.material_breakdown("記憶の固執") == []
+
+
 def test_inventory_custom_material_and_delete():
     proj = Project()
     proj.set_owned("自作素材", 7)

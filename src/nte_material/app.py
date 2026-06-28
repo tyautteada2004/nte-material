@@ -44,11 +44,14 @@ class App(ttk.Frame):
         self.notebook.grid(row=0, column=0, sticky="nsew")
         self.plan_tab = ttk.Frame(self.notebook, padding=6)
         self.inv_tab = ttk.Frame(self.notebook, padding=6)
+        self.check_tab = ttk.Frame(self.notebook, padding=6)
         self.notebook.add(self.plan_tab, text="育成計画")
         self.notebook.add(self.inv_tab, text="所持リソース")
+        self.notebook.add(self.check_tab, text="確認")
 
         self._build_plan_tab()
         self._build_inventory_tab()
+        self._build_check_tab()
         self._build_statusbar()
 
         self.refresh_character_list()
@@ -246,6 +249,63 @@ class App(ttk.Frame):
         ttk.Button(forms, text="選択を削除", command=self.inv_delete).grid(
             row=3, column=3, sticky="w"
         )
+
+    # ================================================================ 確認タブ
+    def _build_check_tab(self) -> None:
+        tab = self.check_tab
+        tab.columnconfigure(0, weight=3)
+        tab.columnconfigure(1, weight=2)
+        tab.rowconfigure(0, weight=1)
+
+        # 左: 不足のある素材だけ
+        left = ttk.LabelFrame(tab, text="不足している素材（不足>0 のみ）", padding=6)
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        left.rowconfigure(0, weight=1)
+        left.columnconfigure(0, weight=1)
+        self.check_tree = ttk.Treeview(
+            left, columns=("rem", "own", "conv", "short"), show="tree headings", height=18
+        )
+        self.check_tree.heading("#0", text="素材名")
+        self.check_tree.column("#0", width=200)
+        for col, text, w in (
+            ("rem", "残り", 50), ("own", "所持", 50), ("conv", "変換↑", 55), ("short", "不足", 50)
+        ):
+            self.check_tree.heading(col, text=text)
+            self.check_tree.column(col, width=w, anchor="e")
+        self.check_tree.grid(row=0, column=0, sticky="nsew")
+        cscroll = ttk.Scrollbar(left, orient="vertical", command=self.check_tree.yview)
+        cscroll.grid(row=0, column=1, sticky="ns")
+        self.check_tree.configure(yscrollcommand=cscroll.set)
+        self.check_tree.bind("<<TreeviewSelect>>", lambda _e: self.on_check_select())
+
+        # 右: その素材を必要とするキャラ
+        right = ttk.LabelFrame(tab, text="この素材が必要なキャラ", padding=6)
+        right.grid(row=0, column=1, sticky="nsew")
+        right.rowconfigure(1, weight=1)
+        right.columnconfigure(0, weight=1)
+        self.check_detail_var = tk.StringVar(value="（左で素材を選択）")
+        ttk.Label(right, textvariable=self.check_detail_var, anchor="w").grid(
+            row=0, column=0, sticky="ew"
+        )
+        self.check_char_tree = ttk.Treeview(
+            right, columns=("qty",), show="tree headings", height=18
+        )
+        self.check_char_tree.heading("#0", text="キャラ")
+        self.check_char_tree.heading("qty", text="必要数")
+        self.check_char_tree.column("#0", width=160)
+        self.check_char_tree.column("qty", width=70, anchor="e")
+        self.check_char_tree.grid(row=1, column=0, sticky="nsew", pady=(2, 0))
+
+    def on_check_select(self) -> None:
+        self.check_char_tree.delete(*self.check_char_tree.get_children())
+        sel = self.check_tree.selection()
+        if not sel:
+            self.check_detail_var.set("（左で素材を選択）")
+            return
+        material = sel[0]
+        self.check_detail_var.set(f"「{material}」を必要とするキャラ")
+        for name, qty in self.project.material_breakdown(material):
+            self.check_char_tree.insert("", tk.END, text=name, values=(qty,))
 
     def _build_statusbar(self) -> None:
         self.status_var = tk.StringVar(value=f"保存先: {self.save_path}")
@@ -461,6 +521,20 @@ class App(ttk.Frame):
             )
         if sel and self.inv_tree.exists(sel):
             self.inv_tree.selection_set(sel)
+
+        # 確認タブ（不足>0 のみ表示）
+        prev = self.check_tree.selection()
+        prev_mat = prev[0] if prev else None
+        self.check_tree.delete(*self.check_tree.get_children())
+        for name, rem, own, short, conv in rows:
+            if short > 0:
+                self.check_tree.insert(
+                    "", tk.END, iid=name, text=name, image=self.icons.get(name),
+                    values=(rem, own, self._conv_str(conv), short),
+                )
+        if prev_mat and self.check_tree.exists(prev_mat):
+            self.check_tree.selection_set(prev_mat)
+        self.on_check_select()  # 選択維持/解除に合わせて右側を更新
 
 
 def main() -> None:

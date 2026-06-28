@@ -150,6 +150,16 @@ class Project:
                 total[material] = total.get(material, 0) + qty
         return total
 
+    def material_breakdown(self, material: str) -> list[tuple[str, int]]:
+        """指定素材を必要とするキャラと、その必要数の一覧（必要数の多い順）。"""
+        out = [
+            (ch.name, ch.remaining().get(material, 0))
+            for ch in self.characters
+        ]
+        out = [(name, qty) for name, qty in out if qty]
+        out.sort(key=lambda t: (-t[1], t[0]))
+        return out
+
     def get_character(self, name: str) -> Character | None:
         for ch in self.characters:
             if ch.name == name:
