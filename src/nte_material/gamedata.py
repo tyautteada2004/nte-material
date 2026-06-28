@@ -119,6 +119,19 @@ SUPPORT_PASSIVES: dict[str, dict] = {
     "追加パッシブ2": {"card": (P, 1), "pilgrimage": 2},
 }
 
+# 下位3つで上位1つにアップグレードできる（緑3→青1, 青3→紫1）
+UPGRADE_RATIO = 3
+
+
+def material_families() -> list[tuple[str, str, str]]:
+    """レア度変換できる素材ファミリーの一覧。各要素は (緑, 青, 紫) の3つ組。"""
+    fams: list[tuple[str, str, str]] = []
+    for src in (IKUSEI_LINES, CARD_ROWS, ARC_SPECIAL_ROWS):
+        for row in src.values():
+            fams.append((row[G], row[B], row[P]))
+    return fams
+
+
 def all_materials() -> list[str]:
     """ゲーム内で登場し得る全素材名（重複なし・安定順）。所持リスト初期表示用。"""
     names: list[str] = []

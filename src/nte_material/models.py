@@ -172,19 +172,47 @@ class Project:
         """所持リストから素材を削除する。"""
         self.inventory.pop(material, None)
 
-    def material_rows(self) -> list[tuple[str, int, int, int]]:
-        """(素材名, 残り合計, 所持, 不足) の一覧を返す。
+    def material_rows(self) -> list[tuple[str, int, int, int, int]]:
+        """(素材名, 残り合計, 所持, 不足, 変換流入) の一覧を返す。
 
         既知の全素材＋所持リストに載っている素材を対象にする。
-        不足 = max(0, 残り - 所持)。
+
+        レア度変換（緑3→青1, 青3→紫1）を考慮して不足を計算する:
+          - 緑: 不足 = max(0, 残り - 所持)。余剰は青へ。
+          - 青: 緑の余剰÷3 を「変換流入」として所持に上乗せし、不足を減らす。
+                上乗せ後の余剰は紫へ。
+          - 紫: 青の余剰（変換流入込み）÷3 を変換流入として上乗せ。
+        「変換流入」が ()書きで表示される下位からの変換可能数。
         """
         remaining = self.total_remaining()
+        shortage: dict[str, int] = {}
+        converted_in: dict[str, int] = {}
+
+        # 緑青紫ファミリーごとに上方変換をカスケード
+        for g, b, p in gd.material_families():
+            ng, nb, np_ = remaining.get(g, 0), remaining.get(b, 0), remaining.get(p, 0)
+            og, ob, op = self.owned(g), self.owned(b), self.owned(p)
+
+            conv_b = max(0, og - ng) // gd.UPGRADE_RATIO       # 緑余剰→青
+            eff_b = ob + conv_b
+            conv_p = max(0, eff_b - nb) // gd.UPGRADE_RATIO     # 青余剰→紫
+
+            shortage[g] = max(0, ng - og)
+            shortage[b] = max(0, nb - eff_b)
+            shortage[p] = max(0, np_ - (op + conv_p))
+            converted_in[g] = 0
+            converted_in[b] = conv_b
+            converted_in[p] = conv_p
+
         names = set(gd.all_materials()) | set(self.inventory) | set(remaining)
         rows = []
         for name in sorted(names, key=gd.sort_key):
             rem = remaining.get(name, 0)
             own = self.owned(name)
-            rows.append((name, rem, own, max(0, rem - own)))
+            if name in shortage:  # ファミリー素材
+                rows.append((name, rem, own, shortage[name], converted_in[name]))
+            else:                 # 単一素材（異象狩り/巡礼）・カスタム
+                rows.append((name, rem, own, max(0, rem - own), 0))
         return rows
 
     def to_dict(self) -> dict:

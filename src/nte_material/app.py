@@ -172,13 +172,17 @@ class App(ttk.Frame):
         self.char_sum_tree.column("qty", width=60, anchor="e")
         self.char_sum_tree.grid(row=1, column=0, sticky="nsew", pady=(2, 8))
 
-        ttk.Label(frame, text="全キャラ合計（残り / 所持 / 不足）").grid(row=2, column=0, sticky="w")
+        ttk.Label(frame, text="全キャラ合計（残り / 所持 / 変換↑ / 不足）").grid(
+            row=2, column=0, sticky="w"
+        )
         self.total_sum_tree = ttk.Treeview(
-            frame, columns=("rem", "own", "short"), show="tree headings", height=12
+            frame, columns=("rem", "own", "conv", "short"), show="tree headings", height=12
         )
         self.total_sum_tree.heading("#0", text="素材名")
-        self.total_sum_tree.column("#0", width=200)
-        for col, text, w in (("rem", "残り", 55), ("own", "所持", 55), ("short", "不足", 55)):
+        self.total_sum_tree.column("#0", width=190)
+        for col, text, w in (
+            ("rem", "残り", 50), ("own", "所持", 50), ("conv", "変換↑", 55), ("short", "不足", 50)
+        ):
             self.total_sum_tree.heading(col, text=text)
             self.total_sum_tree.column(col, width=w, anchor="e")
         self.total_sum_tree.grid(row=3, column=0, sticky="nsew", pady=2)
@@ -190,15 +194,17 @@ class App(ttk.Frame):
         tab.rowconfigure(0, weight=1)
 
         self.inv_tree = ttk.Treeview(
-            tab, columns=("own", "rem", "short"), show="tree headings", height=18
+            tab, columns=("own", "rem", "conv", "short"), show="tree headings", height=18
         )
         self.inv_tree.heading("#0", text="素材名")
         self.inv_tree.heading("own", text="所持")
         self.inv_tree.heading("rem", text="残り")
+        self.inv_tree.heading("conv", text="変換↑")
         self.inv_tree.heading("short", text="不足")
         self.inv_tree.column("#0", width=240)
         self.inv_tree.column("own", width=70, anchor="e")
         self.inv_tree.column("rem", width=70, anchor="e")
+        self.inv_tree.column("conv", width=75, anchor="e")
         self.inv_tree.column("short", width=70, anchor="e")
         self.inv_tree.grid(row=0, column=0, sticky="nsew")
         scroll = ttk.Scrollbar(tab, orient="vertical", command=self.inv_tree.yview)
@@ -353,6 +359,11 @@ class App(ttk.Frame):
         except (ValueError, TypeError):
             return fallback
 
+    @staticmethod
+    def _conv_str(conv: int) -> str:
+        """下位からの変換流入を ()書きで表示（0なら空欄）。"""
+        return f"({conv})" if conv else ""
+
     # ================================================================ 所持リソース操作
     def selected_material(self) -> str | None:
         sel = self.inv_tree.selection()
@@ -430,22 +441,23 @@ class App(ttk.Frame):
                     values=(rem[material],),
                 )
 
-        # 全体（残り/所持/不足）
+        # 全体（残り/所持/変換↑/不足）
         rows = self.project.material_rows()
         self.total_sum_tree.delete(*self.total_sum_tree.get_children())
-        for name, rem, own, short in rows:
+        for name, rem, own, short, conv in rows:
             if rem or own:  # 残りも所持も0の素材は出さない
                 self.total_sum_tree.insert(
-                    "", tk.END, text=name, image=self.icons.get(name), values=(rem, own, short)
+                    "", tk.END, text=name, image=self.icons.get(name),
+                    values=(rem, own, self._conv_str(conv), short),
                 )
 
         # 所持タブのツリー（全素材を表示）
         sel = self.selected_material()
         self.inv_tree.delete(*self.inv_tree.get_children())
-        for name, rem, own, short in rows:
+        for name, rem, own, short, conv in rows:
             self.inv_tree.insert(
                 "", tk.END, iid=name, text=name, image=self.icons.get(name),
-                values=(own, rem, short),
+                values=(own, rem, self._conv_str(conv), short),
             )
         if sel and self.inv_tree.exists(sel):
             self.inv_tree.selection_set(sel)

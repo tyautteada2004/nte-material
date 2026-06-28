@@ -134,17 +134,41 @@ def test_inventory_set_adjust_and_shortage():
     assert proj.owned(card_p) == 0
     proj.set_owned(card_p, 20)
 
-    by_name = {n: (r, o, s) for n, r, o, s in proj.material_rows()}
+    by_name = {n: (r, o, s) for n, r, o, s, c in proj.material_rows()}
     assert by_name[card_p] == (32, 20, 12)    # 不足 = 32-20
 
     # 所持が残りを上回れば不足0
     proj.set_owned(card_p, 50)
-    by_name = {n: (r, o, s) for n, r, o, s in proj.material_rows()}
+    by_name = {n: (r, o, s) for n, r, o, s, c in proj.material_rows()}
     assert by_name[card_p][2] == 0
 
     # 在庫つき JSON 往復
     restored = Project.from_dict(proj.to_dict())
     assert restored.owned(card_p) == 50
+
+
+def test_rarity_conversion_cascade():
+    """緑余剰→青、青余剰→紫 のカスケードで不足が減り、変換流入が ()数 になる。"""
+    proj = Project()
+    a = _chaos()                 # ikusei = ファントム
+    a.include_skill = False
+    a.include_arc = False
+    a.ascension_level = 20       # 最大Lvフル: 妄想17/思想18/超越15
+    proj.characters = [a]
+
+    g, b, p = (
+        gd.IKUSEI_LINES["ファントム"]["緑"],   # 妄想ファントム 必要17
+        gd.IKUSEI_LINES["ファントム"]["青"],   # 思想ファントム 必要18
+        gd.IKUSEI_LINES["ファントム"]["紫"],   # 超越ファントム 必要15
+    )
+    proj.set_owned(g, 30)        # 緑余剰 30-17=13 → 青へ 13//3=4
+    proj.set_owned(b, 18)        # 青 18 + 流入4 = 22 → 余剰4 → 紫へ 4//3=1
+    proj.set_owned(p, 0)         # 紫 0 + 流入1 = 1, 必要15 → 不足14
+
+    by = {n: (rem, own, short, conv) for n, rem, own, short, conv in proj.material_rows()}
+    assert by[g] == (17, 30, 0, 0)    # 緑: 不足0, 流入なし
+    assert by[b] == (18, 18, 0, 4)    # 青: 不足0, 流入(4)
+    assert by[p] == (15, 0, 14, 1)    # 紫: 不足14, 流入(1)
 
 
 def test_inventory_custom_material_and_delete():
