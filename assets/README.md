@@ -13,15 +13,20 @@
 ### A. 手動で置く
 PNG ファイルを上のファイル名で `assets/icons/` に置くだけ。
 
-### B. URL から一括取得
-`assets/icon_sources.json`（素材名 → 画像URL の対応表）に URL を記入し、
-リポジトリ直下で次を実行:
+### B. URL から一括取得（推奨）
+`assets/icon_sources.json` には全素材の画像URL（NtE Wiki＝wikiwiki.jp の webp）が
+記入済みです。リポジトリ直下で次を実行すると、ダウンロードして PNG に変換保存します:
 
 ```sh
 python tools/fetch_icons.py
 ```
 
-> Tkinter が表示できるのは PNG / GIF です。それ以外は事前に PNG へ変換してください。
+> Wiki 画像は **webp** 形式で、Tkinter は webp を表示できません。スクリプトは
+> **Pillow** で webp → PNG に変換します。未導入なら `pip install pillow` 後に再実行
+> してください（アプリ本体は標準ライブラリのみで動作し、Pillow はこの取得スクリプト
+> だけが任意で使います）。
+>
+> URL を別ソースに差し替える場合は `icon_sources.json` を編集してください。
 
 ## 権利と再配布について
 

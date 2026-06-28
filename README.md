@@ -69,8 +69,9 @@ python main.py
 2. 無ければレア度色（緑/青/紫）のプレースホルダを自動生成
 
 実画像は差し替え可能な別資産として扱います（コードは画像に非依存）。
-URL から一括取得する場合は `assets/icon_sources.json` に URL を記入して
-`python tools/fetch_icons.py` を実行。詳細・権利の注意は
+`assets/icon_sources.json` に全素材の Wiki 画像URL（wikiwiki.jp の webp）を
+記入済みなので、`python tools/fetch_icons.py` でダウンロード＋PNG変換できます
+（webp→PNG変換に **Pillow** が必要: `pip install pillow`）。詳細・権利の注意は
 [assets/README.md](assets/README.md) を参照。
 
 > `assets/icons/*.png` は `.gitignore` 済み。リポジトリには画像を同梱せず、
