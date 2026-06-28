@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+# 利用者ごとのセーブデータ（~/.nte_material/ に保存されるが念のため）
+data.json
+*.tmp
+
+# 素材アイコン（運営の著作物の可能性あり・再配布しない）。.gitkeep は残す
+assets/icons/*
+!assets/icons/.gitkeep
