@@ -103,15 +103,27 @@ class App(ttk.Frame):
         prog.columnconfigure(1, weight=1)
 
         levels = [str(v) for v in gd.LEVEL_OPTIONS]
-        self.cb_ascension = self._combo(prog, 0, "最大レベル", levels)
-        self.cb_arc_level = self._combo(prog, 1, "弧盤レベル", levels)
+        self.var_include_ascension = tk.BooleanVar(value=True)
+        self.var_include_skill = tk.BooleanVar(value=True)
         self.var_include_arc = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            prog, text="弧盤を集計に含める", variable=self.var_include_arc, command=self.on_edit
-        ).grid(row=2, column=0, columnspan=2, sticky="w", pady=(0, 4))
 
-        ttk.Separator(prog).grid(row=3, column=0, columnspan=2, sticky="ew", pady=4)
-        ttk.Label(prog, text="スキルレベル (1〜10)").grid(row=4, column=0, columnspan=2, sticky="w")
+        self.cb_ascension = self._combo(prog, 0, "最大レベル", levels)
+        ttk.Checkbutton(
+            prog, text="集計に含める", variable=self.var_include_ascension, command=self.on_edit
+        ).grid(row=0, column=2, sticky="w", padx=(8, 0))
+
+        self.cb_arc_level = self._combo(prog, 1, "弧盤レベル", levels)
+        ttk.Checkbutton(
+            prog, text="集計に含める", variable=self.var_include_arc, command=self.on_edit
+        ).grid(row=1, column=2, sticky="w", padx=(8, 0))
+
+        ttk.Separator(prog).grid(row=3, column=0, columnspan=3, sticky="ew", pady=4)
+        skill_hdr = ttk.Frame(prog)
+        skill_hdr.grid(row=4, column=0, columnspan=3, sticky="w")
+        ttk.Label(skill_hdr, text="スキルレベル (1〜10)").pack(side="left")
+        ttk.Checkbutton(
+            skill_hdr, text="集計に含める", variable=self.var_include_skill, command=self.on_edit
+        ).pack(side="left", padx=(8, 0))
         self.skill_vars: dict[str, tk.IntVar] = {}
         for i, skill in enumerate(gd.SKILLS):
             ttk.Label(prog, text=skill).grid(row=5 + i, column=0, sticky="w", padx=(8, 0))
@@ -124,7 +136,7 @@ class App(ttk.Frame):
             self.skill_vars[skill] = var
 
         ttk.Label(prog, text="サポート追加パッシブ（開放済みでチェック）").grid(
-            row=9, column=0, columnspan=2, sticky="w", pady=(6, 0)
+            row=9, column=0, columnspan=3, sticky="w", pady=(6, 0)
         )
         self.support_vars: dict[str, tk.BooleanVar] = {}
         for i, (name, step) in enumerate(gd.SUPPORT_PASSIVES.items()):
@@ -297,6 +309,8 @@ class App(ttk.Frame):
             self.cb_arc_special.set(ch.arc_special_row)
             self.cb_ascension.set(str(ch.ascension_level))
             self.cb_arc_level.set(str(ch.arc_level))
+            self.var_include_ascension.set(ch.include_ascension)
+            self.var_include_skill.set(ch.include_skill)
             self.var_include_arc.set(ch.include_arc)
             for sk, var in self.skill_vars.items():
                 var.set(ch.skill_levels.get(sk, 1))
@@ -319,6 +333,8 @@ class App(ttk.Frame):
         ch.arc_special_row = self.cb_arc_special.get()
         ch.ascension_level = self._int(self.cb_ascension.get(), ch.ascension_level)
         ch.arc_level = self._int(self.cb_arc_level.get(), ch.arc_level)
+        ch.include_ascension = bool(self.var_include_ascension.get())
+        ch.include_skill = bool(self.var_include_skill.get())
         ch.include_arc = bool(self.var_include_arc.get())
         for sk, var in self.skill_vars.items():
             try:

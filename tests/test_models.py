@@ -157,6 +157,39 @@ def test_inventory_custom_material_and_delete():
     assert "自作素材" not in names
 
 
+def test_include_flags_gate_each_category():
+    ch = _chaos()
+    ch.ascension_level = 20  # 最大レベル素材が出る状態
+    ch.arc_level = 20        # 弧盤素材が出る状態
+    hunt = "海の涙"                                    # 最大レベル由来
+    card_p = gd.CARD_ROWS["ドキドキナイト系"]["紫"]    # スキル由来
+    special_g = gd.ARC_SPECIAL_ROWS["冷たいデザート系"]["緑"]  # 弧盤由来
+
+    full = ch.remaining()
+    assert hunt in full and card_p in full and special_g in full
+
+    ch.include_ascension = False
+    assert hunt not in ch.remaining()
+    ch.include_ascension = True
+
+    ch.include_skill = False
+    assert card_p not in ch.remaining()
+    ch.include_skill = True
+
+    ch.include_arc = False
+    assert special_g not in ch.remaining()
+
+    ch.include_ascension = ch.include_skill = ch.include_arc = False
+    assert ch.remaining() == {}
+
+    # include フラグが JSON 往復で保持される
+    ch.include_skill = True
+    restored = Character.from_dict(ch.to_dict())
+    assert restored.include_ascension is False
+    assert restored.include_skill is True
+    assert restored.include_arc is False
+
+
 def test_display_order_groups_category_and_high_to_low_rarity():
     order = gd.display_order()
     idx = {name: i for i, name in enumerate(order)}

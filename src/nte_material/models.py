@@ -39,6 +39,8 @@ class Character:
     # 進捗
     ascension_level: int = 20                        # 現在の最大レベル（上限）
     arc_level: int = 20                              # 現在の弧盤レベル（上限）
+    include_ascension: bool = True                   # 最大レベルを集計に含めるか
+    include_skill: bool = True                       # スキルを集計に含めるか
     include_arc: bool = True                         # 弧盤を集計に含めるか
     skill_levels: dict[str, int] = field(default_factory=_default_skill_levels)
     support_done: dict[str, bool] = field(default_factory=_default_support)
@@ -52,29 +54,31 @@ class Character:
         special = gd.ARC_SPECIAL_ROWS[self.arc_special_row]
 
         # 最大レベル突破: 現在の上限以上のステップが残り
-        for cap, step in gd.ASCENSION.items():
-            if cap >= self.ascension_level:
-                r, q = step["ikusei"]
-                _merge(out, ik[r], q)
-                _merge(out, self.hunt_mat, step["hunt"])
+        if self.include_ascension:
+            for cap, step in gd.ASCENSION.items():
+                if cap >= self.ascension_level:
+                    r, q = step["ikusei"]
+                    _merge(out, ik[r], q)
+                    _merge(out, self.hunt_mat, step["hunt"])
 
-        # スキル4種: 現在Lvより上の段階が残り
-        for lv in self.skill_levels.values():
-            for to_lv, step in gd.SKILL_STEPS.items():
-                if to_lv > lv:
+        # スキル（4種＋サポート追加パッシブ）
+        if self.include_skill:
+            # スキル4種: 現在Lvより上の段階が残り
+            for lv in self.skill_levels.values():
+                for to_lv, step in gd.SKILL_STEPS.items():
+                    if to_lv > lv:
+                        r, q = step["card"]
+                        _merge(out, card[r], q)
+                        r2, q2 = step["ikusei"]
+                        _merge(out, ik[r2], q2)
+                        _merge(out, self.pilgrimage_mat, step.get("pilgrimage", 0))
+            # サポート追加パッシブ: 未開放なら残り
+            for name, done in self.support_done.items():
+                if not done:
+                    step = gd.SUPPORT_PASSIVES[name]
                     r, q = step["card"]
                     _merge(out, card[r], q)
-                    r2, q2 = step["ikusei"]
-                    _merge(out, ik[r2], q2)
                     _merge(out, self.pilgrimage_mat, step.get("pilgrimage", 0))
-
-        # サポート追加パッシブ: 未開放なら残り
-        for name, done in self.support_done.items():
-            if not done:
-                step = gd.SUPPORT_PASSIVES[name]
-                r, q = step["card"]
-                _merge(out, card[r], q)
-                _merge(out, self.pilgrimage_mat, step.get("pilgrimage", 0))
 
         # 弧盤突破
         if self.include_arc:
@@ -99,6 +103,8 @@ class Character:
             "arc_special_row": self.arc_special_row,
             "ascension_level": self.ascension_level,
             "arc_level": self.arc_level,
+            "include_ascension": self.include_ascension,
+            "include_skill": self.include_skill,
             "include_arc": self.include_arc,
             "skill_levels": dict(self.skill_levels),
             "support_done": dict(self.support_done),
@@ -115,6 +121,8 @@ class Character:
         ch.arc_special_row = d.get("arc_special_row", ch.arc_special_row)
         ch.ascension_level = int(d.get("ascension_level", ch.ascension_level))
         ch.arc_level = int(d.get("arc_level", ch.arc_level))
+        ch.include_ascension = bool(d.get("include_ascension", ch.include_ascension))
+        ch.include_skill = bool(d.get("include_skill", ch.include_skill))
         ch.include_arc = bool(d.get("include_arc", ch.include_arc))
         # 既知のスキル/パッシブだけ取り込む（データ破損・項目追加に強くする）
         for k in gd.SKILLS:
